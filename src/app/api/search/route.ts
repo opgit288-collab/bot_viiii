@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
 
 interface Product {
   name: string
@@ -20,81 +19,61 @@ interface SearchResponse {
   error?: string
 }
 
-// Simulated scraping function using AI to generate realistic product data
+// Generate mock product data
+function generateMockProducts(store: string, query: string): Product[] {
+  const queryLower = query.toLowerCase()
+  const storeCapitalized = store.charAt(0).toUpperCase() + store.slice(1)
+
+  // Base prices for different stores
+  const priceMultipliers = {
+    gollo: 1.0,
+    monge: 1.05,
+    mexpress: 0.95
+  }
+
+  const multiplier = priceMultipliers[store as keyof typeof priceMultipliers] || 1.0
+
+  // Generate 3-5 products based on query
+  const productCount = Math.floor(Math.random() * 3) + 3
+  const products: Product[] = []
+
+  for (let i = 0; i < productCount; i++) {
+    const basePrice = Math.floor((Math.random() * 500000 + 100000) * multiplier)
+    const hasPromo = Math.random() > 0.4
+    const promoPrice = hasPromo ? Math.floor(basePrice * 0.85) : 0
+
+    const productName = `${query} - Modelo ${String.fromCharCode(65 + i)} ${storeCapitalized}`
+
+    products.push({
+      name: productName,
+      regular_price: `₡${basePrice.toLocaleString('es-CR')}`,
+      promo_price: hasPromo ? `₡${promoPrice.toLocaleString('es-CR')}` : 'Sin precio promocional',
+      url: `https://www.${store}.cr/productos/${encodeURIComponent(query.toLowerCase().replace(/\s+/g, '-'))}-${i + 1}`,
+      image_url: 'https://via.placeholder.com/300x300/4A90E2/FFFFFF?text=' + encodeURIComponent(query.substring(0, 15)),
+      store: storeCapitalized
+    })
+  }
+
+  return products
+}
+
+// Simulated scraping function
 async function scrapeStore(store: string, query: string): Promise<Product[]> {
   try {
-    const zai = await ZAI.create()
-    
-    const prompt = `Generate 3-5 realistic product search results for "${query}" from ${store} store in Costa Rica. 
-    For each product, provide:
-    - name: Complete product name
-    - regular_price: Price in Costa Rican colones (format: ₡X.XXX.XXX)
-    - promo_price: Promotional price or "Sin precio promocional"
-    - url: Realistic product URL
-    - image_url: Placeholder image URL
-    
-    Return as JSON array with the exact structure. Make prices realistic for Costa Rica market.
-    
-    Example format:
-    [
-      {
-        "name": "Samsung Galaxy S25 Ultra 256GB Negro",
-        "regular_price": "₡1.250.000",
-        "promo_price": "₡1.150.000",
-        "url": "https://www.${store}.com/samsung-s25-ultra",
-        "image_url": "https://via.placeholder.com/300x300"
-      }
-    ]`
+    console.log(`[${store}] Iniciando búsqueda para: "${query}"`)
 
-    const completion = await zai.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful assistant that generates realistic product search results for Costa Rican stores. Always return valid JSON arrays.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000
-    })
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500))
 
-    const content = completion.choices[0]?.message?.content
-    if (!content) {
-      throw new Error('No response from AI')
-    }
+    // Generate mock products
+    const products = generateMockProducts(store, query)
 
-    // Parse the AI response
-    let products: any[]
-    try {
-      // Extract JSON from the response
-      const jsonMatch = content.match(/\[[\s\S]*\]/)
-      if (jsonMatch) {
-        products = JSON.parse(jsonMatch[0])
-      } else {
-        products = JSON.parse(content)
-      }
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', content)
-      throw new Error('Invalid response format')
-    }
-
-    // Validate and format products
-    return products.map((product: any) => ({
-      name: product.name || 'Producto desconocido',
-      regular_price: product.regular_price || '₡0',
-      promo_price: product.promo_price || 'Sin precio promocional',
-      url: product.url || `https://www.${store}.com/product`,
-      image_url: product.image_url || 'https://via.placeholder.com/300x300',
-      store: store.charAt(0).toUpperCase() + store.slice(1),
-      error: undefined
-    }))
+    console.log(`[${store}] Encontrados ${products.length} productos`)
+    return products
 
   } catch (error) {
     console.error(`Error scraping ${store}:`, error)
-    
+
     // Return error result
     return [{
       name: '',
