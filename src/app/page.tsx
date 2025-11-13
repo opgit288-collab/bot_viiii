@@ -124,7 +124,7 @@ export default function ProductSearchApp() {
       throw new Error(`Error en la petición a ${store}`)
     }
     const data: SearchResponse = await response.json()
-    const products = data.results?.[store] || []
+    const products = Array.isArray(data.results) ? data.results : (data.results?.[store] || [])
     console.log(`📦 Productos encontrados en ${store}: ${products.length}`)
     return products
   }
